@@ -1,14 +1,11 @@
-require "yast"
-
 module FontsConfig
   class FontsConfigState
     include Yast
-    extend Yast::I18n
-
-    SC_PATH = ".sysconfig.fonts-config"
+    include UIShortcuts
+    include I18n
 
     HINT_STYLES = [
-      "none",
+      "no",
       "hintnone",
       "hintslight",
       "hintmedium",
@@ -31,32 +28,26 @@ module FontsConfig
       "unknown"
     ]
 
-    # in case of changing profiles, please reflect
-    # edits in test/data/sysconfig.fonts-config.*
-    # otherwise testsuite will fail
-    PRESETS = {
-        "unset" => {
-          "name" => N_("Unset"),
-          "fpl" => {
-            "sans-serif" => nil,
-            "serif" => nil,
-            "monospace" => nil,
-          },
-          "search_metric_compatible" => nil,
-          "really_force_fpl" => nil,
-          "force_aa_off" => nil,
-          "force_aa_off_mono" => nil,
-          "force_ah_on" => nil,
-          "force_hintstyle" => nil,
-          "embedded_bitmaps" => nil,
-          "all_ebl" => nil,
-          "ebl" => nil,
-          "lcd_filter" => nil,
-          "subpixel_layout" => nil,
-          "help" => nil,
-        },
+
+    # fpl ~ family preference lists
+    attr_accessor :fpl
+    attr_accessor :search_metric_compatible
+    attr_accessor :really_force_fpl
+
+    attr_accessor :force_aa_off
+    attr_accessor :force_aa_off_mono
+    attr_accessor :force_ah_on
+    attr_accessor :force_hintstyle
+    attr_accessor :embedded_bitmaps
+    attr_accessor :all_ebl
+    attr_accessor :ebl
+    attr_accessor :lcd_filter
+    attr_accessor :subpixel_layout
+
+    def initialize
+      @@presets = {
         "bitmap_fonts" => {
-          "name" => N_("Bitmap Fonts"),
+          "name" => _("Bitmap Fonts"),
           "fpl" =>  {
             "sans-serif" => [
               "Adobe Helvetica",
@@ -101,10 +92,9 @@ module FontsConfig
           "ebl" => [ ],
           "lcd_filter" => LCD_FILTERS[0],
           "subpixel_layout" => SUBPIXEL_LAYOUTS[0],
-          "help" => N_("Unlike 'outline fonts' (fonts described mathematically via curves; chosen in the rest of profiles), 'bitmap fonts' represents group of fonts, which contain bitmap for each glyph and size. Thus, only several sizes exist for each font. They are very fast to render, because there's no need to compute the bitmap and are considered more readable especially on small sizes (even, some outline fonts contains so called 'embedded bitmaps', bitmap versions of itself, for small sizes). Bitmap fonts are rendered black and white, not smoothed.")
         },
         "bw_fonts" => {
-          "name" => N_("Black and White Rendering"),
+          "name" => _("Black and White Rendering"),
           "fpl" =>  {
             "sans-serif" => [],
             "serif" => [],
@@ -121,10 +111,9 @@ module FontsConfig
           "ebl" => [ "ja", "ko", "zh" ],
           "lcd_filter" => LCD_FILTERS[0],
           "subpixel_layout" => SUBPIXEL_LAYOUTS[0],
-          "help" => N_("Fonts rendered without antialiasing (grayscale smoothing), black and white. In contrast with smoothed fonts, they are much more readable without any drawback of smoothing (fuzzy or uneven stems etc.). In connection with good hinted fonts (e. g. Liberation 1 fonts), this setting can give bitmap quality fonts while maintaining scalability. Default family preference list is used."),
         },
         "bw_mono_fonts" => {
-          "name" => N_("Black and White Rendering for Monospace Fonts"),
+          "name" => _("Black and White Rendering for Monospace Fonts"),
           "fpl" =>  {
             "sans-serif" => [],
             "serif" => [],
@@ -141,10 +130,9 @@ module FontsConfig
           "ebl" => [ "ja", "ko", "zh" ],
           "lcd_filter" => LCD_FILTERS[0],
           "subpixel_layout" => SUBPIXEL_LAYOUTS[0],
-          "help" => N_("Monospace fonts rendered not smoothed, other fonts (sans-serif, sans and unspecified) will use default setting. Default family preference list is used."),
         },
         "default" => {
-          "name" => N_("Default"),
+          "name" => _("Default"),
           "fpl" =>  {
             "sans-serif" => [],
             "serif" => [],
@@ -161,10 +149,9 @@ module FontsConfig
           "ebl" => [ "ja", "ko", "zh" ],
           "lcd_filter" => LCD_FILTERS[0],
           "subpixel_layout" => SUBPIXEL_LAYOUTS[0],
-          "help" => N_("Fonts are smoothed with antialiasing. Unlike black and white rendered fonts, this setting can produce 'beautiful' fonts sometimes to the detriment of readability. TrueType fonts, which are known to have good hinting instructions are rendered with bytecode interpreter, otherwise freetype autohinter is used on the 'hintslight' hinting level. Using font native hinting instructions produces glyphs displayed with thiner stems. Default family preference list is used (nowdays TrueType fonts with good instructions are prefered)."),
         },
         "cff_fonts" => {
-          "name" => N_("CFF Fonts"),
+          "name" => _("CFF Fonts"),
           "fpl" =>  {
             "sans-serif" => [
               "Source Sans Pro",
@@ -203,10 +190,9 @@ module FontsConfig
           "ebl" => [ "ja", "ko", "zh" ],
           "lcd_filter" => LCD_FILTERS[0],
           "subpixel_layout" => SUBPIXEL_LAYOUTS[0],
-          "help" => N_("Given Adobe's contribution to freetype library, CFF fonts can be considered good compromise between readability and smoothness of rendered glyphs."),
         },
         "autohinter" => {
-          "name" => N_("Exclusive Autohinter Rendering"),
+          "name" => _("Exclusive Autohinter Rendering"),
           "fpl" =>  {
             "sans-serif" => [],
             "serif" => [],
@@ -223,90 +209,44 @@ module FontsConfig
           "ebl" => [ "ja", "ko", "zh" ],
           "lcd_filter" => LCD_FILTERS[0],
           "subpixel_layout" => SUBPIXEL_LAYOUTS[0],
-          "help" => N_("Unlike in default profile, even for good hinted fonts, freetype's autohinter is used (on the 'hintslight' level). That leads to thicker, but sometimes fuzzier (and therefore less readable), glyphs. Default family preference list is used."),
-        },
-        "subpixel_rendering" => {
-          "name" => N_("Subpixel Rendering"),
-          "fpl" =>  {
-            "sans-serif" => [
-              "Arial",
-              "Ubuntu",
-            ],
-            "serif" => [
-              "Times New Roman",
-            ],
-            "monospace" => [
-              "Courier New",
-              "Ubuntu Mono",
-            ],
-          },
-          "search_metric_compatible" => true,
-          "really_force_fpl" => false,
-          "force_aa_off" => false,
-          "force_aa_off_mono" => false,
-          "force_ah_on" => false,
-          "force_hintstyle" => HINT_STYLES[0],
-          "embedded_bitmaps" => true,
-          "all_ebl" => false,
-          "ebl" => [ "ja", "ko", "zh" ],
-          "lcd_filter" => LCD_FILTERS[1],
-          "subpixel_layout" => SUBPIXEL_LAYOUTS[1],
-          "help" => N_("Use subpixel rendering capability of LCD monitor. Requires subpixel rendering enabled FreeType library."),
         },
       }
-
-    # fpl ~ family preference lists
-    attr_accessor :fpl
-    attr_accessor :search_metric_compatible
-    attr_accessor :really_force_fpl
-
-    attr_accessor :force_aa_off
-    attr_accessor :force_aa_off_mono
-    attr_accessor :force_ah_on
-    attr_accessor :force_hintstyle
-    attr_accessor :embedded_bitmaps
-    attr_accessor :all_ebl
-    attr_accessor :ebl
-    attr_accessor :lcd_filter
-    attr_accessor :subpixel_layout
-
-    def initialize
-      load_preset("unset")
+      load_preset("default")
     end
   
     # create list of preset [key, name] pairs
     def self.preset_list
-      PRESETS.keys.drop(1).map do |preset|
-         [ preset, _(PRESETS[preset]["name"]) ]
-       end
+      @@presets.keys.map do |preset|
+         [ preset, @@presets[preset]["name"] ]
+        end
     end
 
-    def self.preset?(key)
-      PRESETS.has_key?(key)
+    def self.is_preset(key)
+      @@presets.keys.index(key)
     end
 
     def load_preset(preset)
-      @fpl = deep_copy(PRESETS[preset]["fpl"])
-      @search_metric_compatible = PRESETS[preset]["search_metric_compatible"]
-      @really_force_fpl = PRESETS[preset]["really_force_fpl"]
+      @fpl = deep_copy(@@presets[preset]["fpl"])
+      @search_metric_compatible = @@presets[preset]["search_metric_compatible"]
+      @really_force_fpl = @@presets[preset]["really_force_fpl"]
 
-      @force_aa_off  = PRESETS[preset]["force_aa_off"]
-      @force_aa_off_mono = PRESETS[preset]["force_aa_off_mono"] 
-      @force_ah_on = PRESETS[preset]["force_ah_on"]
-      @force_hintstyle = PRESETS[preset]["force_hintstyle"]
-      @embedded_bitmaps = PRESETS[preset]["embedded_bitmaps"]
-      @all_ebl = PRESETS[preset]["all_ebl"]
-      @ebl = PRESETS[preset]["ebl"]
-      @lcd_filter = PRESETS[preset]["lcd_filter"]
-      @subpixel_layout = PRESETS[preset]["subpixel_layout"]
+      @force_aa_off  = @@presets[preset]["force_aa_off"]
+      @force_aa_off_mono = @@presets[preset]["force_aa_off_mono"] 
+      @force_ah_on = @@presets[preset]["force_ah_on"]
+      @force_hintstyle = @@presets[preset]["force_hintstyle"]
+      @embedded_bitmaps = @@presets[preset]["embedded_bitmaps"]
+      @all_ebl = @@presets[preset]["all_ebl"]
+      @ebl = @@presets[preset]["ebl"]
+      @lcd_filter = @@presets[preset]["lcd_filter"]
+      @supixel_layout = @@presets[preset]["subpixel_layout"]
    end
 
    def to_s
-     "fpl[sans]=" + @fpl["sans-serif"].join(':') +
-     ",fpl[serif]=" + @fpl["serif"].join(':') +
-     ",fpl[monospace]=" + @fpl["monospace"].join(':') +
+     "fpl[sans]=" + fpl["sans-serif"].join(':') +
+     ",fpl[serif]=" + fpl["serif"].join(':') +
+     ",fpl[monospace]=" + fpl["monospace"].join(':') +
      ",search_metric_compatible=" + @search_metric_compatible.to_s +
-     ",really_force_fpl=" + @really_force_fpl.to_s +
+     ",really_force_fpl=" + @relly_force_fpl.to_s +
      ",force_aa_off=" + @force_aa_off.to_s +
      ",force_aa_off_mono=" + @force_aa_off_mono.to_s +
      ",force_ah_on=" + @force_ah_on.to_s +
@@ -318,58 +258,58 @@ module FontsConfig
      ",subpixel_layout=" + @subpixel_layout
    end
 
-   def write
+   def Write
       temp = @fpl["sans-serif"].join(':')
       SCR.Write(
-        path(SC_PATH + ".PREFER_SANS_FAMILIES"),
+        path(".sysconfig.fonts-config.PREFER_SANS_FAMILIES"),
         temp
       )
 
       temp = @fpl["serif"].join(':')
       SCR.Write(
-        path(SC_PATH + ".PREFER_SERIF_FAMILIES"),
+        path(".sysconfig.fonts-config.PREFER_SERIF_FAMILIES"),
         temp
       )
 
       temp = @fpl["monospace"].join(':')
       SCR.Write(
-        path(SC_PATH + ".PREFER_MONO_FAMILIES"),
+        path(".sysconfig.fonts-config.PREFER_MONO_FAMILIES"),
         temp
       )
         
       temp = @search_metric_compatible ? "yes" : "no"
       SCR.Write(
-        path(SC_PATH + ".SEARCH_METRIC_COMPATIBLE"),
+        path(".sysconfig.fonts-config.SEARCH_METRIC_COMPATIBLE"),
         temp
       )
 
       temp = @really_force_fpl ? "yes" : "no"
       SCR.Write(
-        path(SC_PATH + ".FORCE_FAMILY_PREFERENCE_LISTS"),
+        path(".sysconfig.fonts-config.FORCE_FAMILY_PREFERENCE_LISTS"),
         temp
       )
 
       temp = @force_aa_off ? "yes" : "no"
       SCR.Write(
-        path(SC_PATH + ".FORCE_BW"),
+        path(".sysconfig.fonts-config.FORCE_BW"),
         temp
       )
       
       temp = @force_aa_off_mono ? "yes" : "no"
       SCR.Write(
-        path(SC_PATH + ".FORCE_BW_MONOSPACE"),
+        path(".sysconfig.fonts-config.FORCE_BW"),
         temp
       )
     
-      temp = @force_ah_on ? "yes" : "no"
+      temp = @force_aa_off ? "yes" : "no"
       SCR.Write(
-        path(SC_PATH + ".FORCE_AUTOHINT"),
+        path(".sysconfig.fonts-config.FORCE_BW"),
         temp
       )
 
       SCR.Write(
-        path(SC_PATH + ".FORCE_HINTSTYLE"),
-        @force_hintstyle
+        path(".sysconfig.fonts-config.FORCE_HINTSTYLE"),
+        @force_hinstyle
       )
 
       # don't use embedded bitmaps when 'Use Embedded Bitmaps' is 
@@ -377,7 +317,7 @@ module FontsConfig
       # the list is empty -- empty string would mean 'ALL')
       temp = !@embedded_bitmaps || (!@all_ebl && @ebl.empty?) ? "no" : "yes"
       SCR.Write(
-        path(SC_PATH + ".USE_EMBEDDED_BITMAPS"),
+        path(".sysconfig.fonts-config.USE_EMBEDDED_BITMAPS"),
         temp
       )
 
@@ -387,104 +327,90 @@ module FontsConfig
         temp = @ebl.join(':')
       end
       SCR.Write(
-        path(SC_PATH + ".EMBEDDED_BITMAPS_LANGUAGES"),
+        path(".sysconfig.fonts-config.EMBEDDED_BITMAPS_LANGUAGES"),
         temp 
       );
 
       SCR.Write(
-        path(SC_PATH + ".USE_LCDFILTER"),
+        path(".sysconfig.fonts-config.USE_LCDFILTER"),
         @lcd_filter
       )
 
       SCR.Write(
-        path(SC_PATH + ".USE_RGBA"),
+        path(".sysconfig.fonts-config.FORCE_HINTSTYLE"),
         @subpixel_layout
       )
 
-      # flush
-      SCR.Write(
-        path(SC_PATH),
-        nil
-      )
    end
 
-   def read
-      # use values from "default" profile in case
-      # some sysconfig variables are missing
-      load_preset("default")
+   def Read
+      temp = SCR.Read(
+              path(".sysconfig.fonts-config.PREFER_SANS_FAMILIES")
+             )
+      @fpl["sans-serif"] = temp.split(':')
 
       temp = SCR.Read(
-              path(SC_PATH + ".PREFER_SANS_FAMILIES")
+              path(".sysconfig.fonts-config.PREFER_SERIF_FAMILIES")
              )
-      @fpl["sans-serif"] = temp.split(':') unless temp.nil?
+      @fpl["serif"] = temp.split(':')
 
       temp = SCR.Read(
-              path(SC_PATH + ".PREFER_SERIF_FAMILIES")
+              path(".sysconfig.fonts-config.PREFER_MONO_FAMILIES")
              )
-      @fpl["serif"] = temp.split(':') unless temp.nil?
+      @fpl["monospace"] = temp.split(':')
 
       temp = SCR.Read(
-              path(SC_PATH + ".PREFER_MONO_FAMILIES")
+               path(".sysconfig.fonts-config.SEARCH_METRIC_COMPATIBLE"),
              )
-      @fpl["monospace"] = temp.split(':') unless temp.nil?
+      @search_metric_compatible = temp == "yes"
 
       temp = SCR.Read(
-               path(SC_PATH + ".SEARCH_METRIC_COMPATIBLE"),
+               path(".sysconfig.fonts-config.FORCE_FAMILY_PREFERENCE_LISTS"),
              )
-      @search_metric_compatible = temp == "yes" unless temp.nil?
+      @really_force_fpl = temp == "yes"
 
       temp = SCR.Read(
-               path(SC_PATH + ".FORCE_FAMILY_PREFERENCE_LISTS"),
+               path(".sysconfig.fonts-config.FORCE_BW"),
              )
-      @really_force_fpl = temp == "yes" unless temp.nil?
+      @force_aa_off = temp == "yes"
 
       temp = SCR.Read(
-               path(SC_PATH + ".FORCE_BW"),
+               path(".sysconfig.fonts-config.FORCE_BW_MONOSPACE"),
              )
-      @force_aa_off = temp == "yes" unless temp.nil?
+      @force_aa_off_mono = temp == "yes"
 
       temp = SCR.Read(
-               path(SC_PATH + ".FORCE_BW_MONOSPACE"),
+               path(".sysconfig.fonts-config.FORCE_AUTOHINT"),
              )
-      @force_aa_off_mono = temp == "yes" unless temp.nil?
+      @force_ah_on = temp == "yes"
+
+      @force_hinstyle = SCR.Read(
+                          path(".sysconfig.fonts-config.FORCE_HINTSTYLE"),
+                        )
 
       temp = SCR.Read(
-               path(SC_PATH + ".FORCE_AUTOHINT"),
+               path(".sysconfig.fonts-config.USE_EMBEDDED_BITMAPS")
              )
-      @force_ah_on = temp == "yes" unless temp.nil?
+      @embedded_bitmaps = temp == "yes"
 
       temp = SCR.Read(
-               path(SC_PATH + ".FORCE_HINTSTYLE"),
+              path(".sysconfig.fonts-config.EMBEDDED_BITMAPS_LANGUAGES")
              )
-      @force_hintstyle = temp unless temp.nil?
-
-      temp = SCR.Read(
-               path(SC_PATH + ".USE_EMBEDDED_BITMAPS")
-             )
-      @embedded_bitmaps = temp == "yes" unless temp.nil?
-
-      temp = SCR.Read(
-              path(SC_PATH + ".EMBEDDED_BITMAPS_LANGUAGES")
-             )
-      unless temp.nil?
-        if (temp == "")
-          @all_ebl = true
-          @ebl = []
-        else
-          @all_ebl = false
-          @ebl = temp.split(':')
-        end
+      if (temp == "")
+        @all_ebl = true
+        @ebl = []
+      else
+        @all_ebl = false
+        @ebl = temp.split(':')
       end
 
-      temp = SCR.Read(
-               path(SC_PATH + ".USE_LCDFILTER"),
-            )
-      @lcd_filter = temp unless temp.nil?
+      @lcd_filter = SCR.Read(
+                      path(".sysconfig.fonts-config.USE_LCDFILTER"),
+                    )
 
-      temp = SCR.Read(
-               path(SC_PATH + ".USE_RGBA"),
-             )
-      @subpixel_layout = temp unless temp.nil?
+      @subpixel_layout = SCR.Read(
+                           path(".sysconfig.fonts-config.USE_RGBA"),
+                         )
    end
   end
 end
